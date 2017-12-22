@@ -1,0 +1,145 @@
+---
+title: "Axis tick labels placement in ggplot2"
+author: "Sangeeta Bhatia"
+date: "22/12/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+## Optimal placement of axis tick labels
+
+The parameters vjust and hjust control the horizontal and vertical justification of the text labels. This can be demonstrated in detail by playing around with the example given in the [specs](http://ggplot2.tidyverse.org/articles/ggplot2-specs.html) which is reproduced here.
+
+
+```{r example}
+just <- expand.grid(hjust = c(0, 0.5, 1), vjust = c(0, 0.5, 1))
+just$label <- paste0(just$hjust, ", ", just$vjust)
+
+ggplot(just, aes(hjust, vjust)) +
+  geom_point(colour = "grey70", size = 5) + 
+  geom_text(aes(label = label, hjust = hjust, vjust = vjust))
+```
+
+So the value of hjust moves the label left; the bigger the value, the more left of the point is the label placed. 
+
+```{r hjust}
+just <- expand.grid(hjust = seq(0, 0.5, by = 0.1), vjust = 0)
+just$label <- paste0(just$hjust, ", ")
+
+ggplot(just, aes(hjust, vjust)) +
+  geom_point(colour = "grey70", size = 5) + 
+  geom_text(aes(label = label, hjust = hjust, vjust = vjust))
+```
+
+The specs do not recomment the use of values outside the range 0 to 1. However, at least in this particular case, the behavior is as expected.
+
+```{r hjust2}
+just <- expand.grid(hjust = seq(1.0, 1.5, by = 0.1), vjust = 0)
+just$label <- paste0(just$hjust, ", ")
+
+ggplot(just, aes(hjust, vjust)) +
+  geom_point(colour = "grey70", size = 5) + 
+  geom_text(aes(label = label, hjust = hjust, vjust = vjust))
+```
+
+
+What about negative values? Yep, works as expected.
+
+```{r hjust-neg}
+just <- expand.grid(hjust = seq(-0.5, 0, by = 0.1), vjust = 0)
+just$label <- paste0(just$hjust, ", ")
+
+ggplot(just, aes(hjust, vjust)) +
+  geom_point(colour = "grey70", size = 5) + 
+  geom_text(aes(label = label, hjust = hjust, vjust = vjust))
+```
+
+
+The same holds true for vjust.
+
+```{r vjust}
+just <- expand.grid(vjust = seq(0, 1.2, by = 0.1), hjust = 0)
+just$label <- paste0(just$vjust, ", ")
+
+ggplot(just, aes(vjust, hjust)) +
+  geom_point(colour = "grey70", size = 5) + 
+  geom_text(aes(label = label, hjust = hjust, vjust = vjust))
+```
+
+## Axis tick labels
+
+What happens when the axis tick labels are long and have to be rotated? How do the parameters vjust and hjust interact with the angle? In the plot below, the x-axis tick labels begin to overlap each other making the text illegible.
+
+```{r}
+dates <- Sys.Date() + sort(sample(1:100, 100))
+vals  <- sample(1:100, 100)
+p <- ggplot(NULL, aes(dates, vals)) + 
+     geom_point() + 
+     scale_x_date(date_labels = "%d-%m-%Y", date_breaks = "1 week")  
+
+p
+```
+
+
+Placing the labels at an angle makes sense.
+
+
+```{r}
+
+p1 <- p + theme(axis.text.x = element_text(angle = 45))
+p1
+```
+
+But the labels push into the plot area, which of course makes the plot ugly. 
+
+```{r}
+p2 <- p1 + theme(axis.text.x = element_text(vjust = 0.1))
+p2
+```
+
+
+But now the labels are placed too far away from the ticks. Perhaps increase vjust? 
+
+
+```{r}
+p1 + theme(axis.text.x = element_text(vjust = 0.5))
+
+```
+
+The labels are now midway between ticks, which is a bit annoying. Let is change both params at the same time and see how that influences the label placement.
+
+```{r}
+just <- expand.grid(vjust = c(0, 0.5, 1), hjust = c(0, 0.5, 1))
+plots <- apply(just, 1, function(row){
+  vjust <- row[1]
+  hjust <- row[2]
+  ggplot(NULL, aes(dates, vals)) + 
+    geom_point() + 
+    scale_x_date(date_labels = "%d-%m-%Y", date_breaks = "2 weeks")  +
+    theme(axis.text.x = element_text(angle = 45, vjust = vjust, hjust = hjust)) +
+    ggtitle(paste0("vjust = ",vjust, ", hjust = ", hjust))
+  
+})
+
+cowplot::plot_grid(plotlist = plots)
+
+```
+
+In this case, vjust = 1, hjust = 1 brings us closest to the optimal placement! 
+
+## TD;DR
+
+1. The bigger the value of hjust, the more left the label is placed;
+2. The bigger the value of vjust, the lower the label is placed;
+3. It is best not to use values outside the interval [0, 1] for the parameters.
+
+
+
+
+
+
+
